@@ -1,0 +1,1274 @@
+<!DOCTYPE html>
+<html lang="id" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ANOMALY — AI Developer Studio (Terminal + Auto-ZIP)</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Inter & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <!-- Highlight.js (Tokyo Night Dark) -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/tokyo-night-dark.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <!-- Marked.js & JSZip -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          }
+        }
+      }
+    };
+  </script>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      background-color: #07090f;
+      background-image:
+        radial-gradient(circle at 12% 10%, rgba(99, 102, 241, 0.14) 0%, transparent 38%),
+        radial-gradient(circle at 88% 85%, rgba(16, 185, 129, 0.09) 0%, transparent 40%),
+        radial-gradient(circle at 50% 45%, rgba(139, 92, 246, 0.07) 0%, transparent 50%);
+      color: #e2e8f0;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(148, 163, 184, 0.22);
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(148, 163, 184, 0.4);
+    }
+
+    /* Glassmorphism Panel */
+    .glass-panel {
+      background: rgba(13, 17, 28, 0.82);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    /* =========================================================
+       TERMINAL MACOS / LINUX CODE BLOCK
+       ========================================================= */
+    .terminal-window {
+      background: #0d1018;
+      border: 1px solid rgba(99, 102, 241, 0.3);
+      border-radius: 14px;
+      overflow: hidden;
+      margin: 16px 0;
+      box-shadow: 0 16px 38px -12px rgba(0, 0, 0, 0.78);
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+    .terminal-window:hover {
+      border-color: rgba(129, 140, 248, 0.55);
+      box-shadow: 0 20px 42px -12px rgba(0, 0, 0, 0.88), 0 0 22px rgba(99, 102, 241, 0.12);
+    }
+
+    .terminal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 10px 14px;
+      background: linear-gradient(180deg, #191e2e 0%, #131724 100%);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      user-select: none;
+    }
+
+    .terminal-dots {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+    .terminal-dot {
+      width: 11px;
+      height: 11px;
+      border-radius: 9999px;
+    }
+    .dot-red { background: #ff5f56; border: 1px solid #e0443e; }
+    .dot-yellow { background: #ffbd2e; border: 1px solid #dea123; }
+    .dot-green { background: #27c93f; border: 1px solid #1aab29; }
+
+    .terminal-copy-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 11px;
+      border-radius: 8px;
+      font-size: 11.5px;
+      font-weight: 600;
+      color: #e2e8f0;
+      background: rgba(255, 255, 255, 0.07);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      cursor: pointer;
+      transition: all 0.18s ease;
+      flex-shrink: 0;
+    }
+    .terminal-copy-btn:hover {
+      background: rgba(99, 102, 241, 0.3);
+      border-color: rgba(129, 140, 248, 0.6);
+      color: #ffffff;
+    }
+    .terminal-copy-btn:active {
+      transform: scale(0.95);
+    }
+    .terminal-copy-btn.copied {
+      background: rgba(16, 185, 129, 0.22);
+      border-color: rgba(16, 185, 129, 0.6);
+      color: #34d399;
+    }
+
+    .terminal-body {
+      display: flex;
+      overflow-x: auto;
+      padding: 14px 0;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      line-height: 1.65;
+      background: #0b0e16;
+    }
+
+    .line-numbers {
+      user-select: none;
+      text-align: right;
+      padding: 0 13px 0 15px;
+      color: #475569;
+      border-right: 1px solid rgba(255, 255, 255, 0.06);
+      flex-shrink: 0;
+    }
+
+    .code-content {
+      padding: 0 18px;
+      margin: 0;
+      flex: 1;
+      color: #c0caf5;
+      white-space: pre;
+    }
+    .code-content code {
+      font-family: 'JetBrains Mono', monospace !important;
+      background: transparent !important;
+      padding: 0 !important;
+    }
+
+    /* =========================================================
+       CLAUDE ARTIFACT AUTO-ZIP CARD
+       ========================================================= */
+    .artifact-zip-card {
+      margin-top: 18px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(15, 23, 42, 0.92) 55%, rgba(99, 102, 241, 0.12) 100%);
+      border: 1px solid rgba(16, 185, 129, 0.38);
+      padding: 16px;
+      box-shadow: 0 12px 28px -8px rgba(16, 185, 129, 0.18);
+    }
+
+    /* =========================================================
+       PROSE MARKDOWN STYLING
+       ========================================================= */
+    .prose-chat p {
+      margin-bottom: 0.8rem;
+      line-height: 1.68;
+      color: #e2e8f0;
+    }
+    .prose-chat p:last-child {
+      margin-bottom: 0;
+    }
+    .prose-chat ul, .prose-chat ol {
+      margin: 0.5rem 0 0.85rem 1.35rem;
+      color: #cbd5e1;
+    }
+    .prose-chat ul { list-style-type: disc; }
+    .prose-chat ol { list-style-type: decimal; }
+    .prose-chat li { margin-bottom: 0.35rem; line-height: 1.6; }
+    .prose-chat code:not(pre code) {
+      background: rgba(99, 102, 241, 0.18);
+      border: 1px solid rgba(99, 102, 241, 0.25);
+      color: #c7d2fe;
+      padding: 2px 6px;
+      border-radius: 6px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.84em;
+    }
+    .prose-chat h1, .prose-chat h2, .prose-chat h3, .prose-chat h4 {
+      font-weight: 700;
+      color: #f8fafc;
+      margin: 1.1rem 0 0.5rem;
+    }
+    .prose-chat h1 { font-size: 1.3rem; }
+    .prose-chat h2 { font-size: 1.15rem; }
+    .prose-chat h3 { font-size: 1.02rem; }
+    .prose-chat strong { color: #ffffff; }
+    .prose-chat blockquote {
+      border-left: 3px solid #6366f1;
+      background: rgba(99, 102, 241, 0.08);
+      padding: 8px 12px;
+      border-radius: 0 8px 8px 0;
+      margin: 10px 0;
+      color: #cbd5e1;
+    }
+  </style>
+</head>
+<body class="h-screen w-full flex overflow-hidden selection:bg-indigo-500/35 selection:text-indigo-100">
+
+  <!-- Ambient Background Glow -->
+  <div class="fixed inset-0 pointer-events-none overflow-hidden z-0">
+    <div class="absolute -top-40 -left-40 w-96 h-96 bg-indigo-600/15 rounded-full blur-3xl"></div>
+    <div class="absolute bottom-10 -right-32 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl"></div>
+  </div>
+
+  <!-- Mobile Sidebar Overlay -->
+  <div id="sidebarOverlay" class="fixed inset-0 bg-black/70 backdrop-blur-xs z-20 hidden md:hidden"></div>
+
+  <!-- =========================================================
+       SIDEBAR RIWAYAT PROYEK
+       ========================================================= -->
+  <aside id="sidebar" class="fixed md:static inset-y-0 left-0 w-72 glass-panel border-r border-white/10 flex flex-col z-30 transform -translate-x-full md:translate-x-0 transition-transform duration-300">
+    <div class="p-4 border-b border-white/10 flex items-center justify-between">
+      <div class="flex items-center gap-2.5">
+        <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 via-violet-600 to-emerald-400 flex items-center justify-center font-extrabold text-white shadow-lg shadow-indigo-500/25">
+          A
+        </div>
+        <div>
+          <div class="flex items-center gap-1.5">
+            <h1 class="font-extrabold text-sm tracking-wide text-white">ANOMALY</h1>
+            <span class="text-[10px] font-mono px-1.5 py-0.2 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">STUDIO</span>
+          </div>
+          <span class="text-[11px] text-emerald-400 flex items-center gap-1.5 mt-0.5">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> bansos.mavy.me
+          </span>
+        </div>
+      </div>
+
+      <button id="newChatBtn" title="Buat Proyek Baru" class="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition shadow-md shadow-indigo-600/25 active:scale-95">
+        + Baru
+      </button>
+    </div>
+
+    <div class="px-4 pt-3 pb-1 flex items-center justify-between">
+      <span class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Riwayat Sesi</span>
+      <span id="sessionCount" class="text-[10px] font-mono text-slate-400 bg-white/5 px-1.5 py-0.5 rounded">0</span>
+    </div>
+
+    <div class="flex-1 overflow-y-auto p-3 space-y-1.5" id="chatHistoryList"></div>
+
+    <div class="p-3 border-t border-white/10 space-y-2 bg-black/20">
+      <button id="openSettingsBtn" class="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] border border-white/10 text-xs font-semibold text-slate-200 transition">
+        <span class="flex items-center gap-2">
+          <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/></svg>
+          API Key & Pengaturan
+        </span>
+        <span id="keyStatusBadge" class="px-2 py-0.5 rounded-full text-[10px] font-mono bg-amber-500/20 text-amber-300 border border-amber-500/30">Isi Key</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- =========================================================
+       MAIN WORKSPACE
+       ========================================================= -->
+  <main class="flex-1 flex flex-col relative z-10 min-w-0">
+    <!-- Top Header -->
+    <header class="h-15 py-2.5 glass-panel border-b border-white/10 px-4 flex items-center justify-between gap-2">
+      <div class="flex items-center gap-2.5 min-w-0">
+        <button id="mobileMenuBtn" class="md:hidden p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-slate-200">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+        </button>
+
+        <!-- Model Dropdown -->
+        <select id="modelSelect" class="bg-slate-900/95 border border-white/15 hover:border-indigo-500/50 text-slate-100 text-xs font-mono font-medium rounded-xl px-3 py-2 focus:outline-none focus:border-indigo-500 cursor-pointer max-w-[185px] sm:max-w-xs truncate">
+          <optgroup label="✦ Anthropic Claude">
+            <option value="claude-sonnet-5-5" selected>claude-sonnet-5-5</option>
+            <option value="claude-opus-5-5">claude-opus-5-5</option>
+            <option value="claude-haiku-5-5">claude-haiku-5-5</option>
+            <option value="claude-4-8-opus">claude-4-8-opus</option>
+            <option value="claude-4-7-opus">claude-4-7-opus</option>
+            <option value="claude-4-5-sonnet">claude-4-5-sonnet</option>
+          </optgroup>
+          <optgroup label="✦ OpenAI GPT">
+            <option value="gpt-6-luna">gpt-6-luna</option>
+            <option value="gpt-6-sol">gpt-6-sol</option>
+            <option value="gpt-6-2-sol">gpt-6-2-sol</option>
+          </optgroup>
+        </select>
+
+        <!-- Toggle Auto-ZIP Artifact Mode -->
+        <label class="flex items-center gap-2 text-xs font-medium text-emerald-300 bg-emerald-500/10 hover:bg-emerald-500/15 px-3 py-1.5 rounded-xl border border-emerald-500/30 cursor-pointer select-none transition" title="Otomatis memerintahkan AI membuat struktur folder & file lengkap agar langsung dikemas jadi .ZIP">
+          <input type="checkbox" id="zipProjectMode" checked class="accent-emerald-500 rounded cursor-pointer" />
+          <span class="hidden sm:inline">Auto-ZIP Artifact</span>
+          <span class="sm:hidden">Auto-ZIP</span>
+        </label>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <button id="headerKeyBtn" class="hidden sm:flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 transition">
+          <span id="headerKeyDot" class="w-2 h-2 rounded-full bg-amber-400"></span>
+          <span>API Key</span>
+        </button>
+        <button id="clearChatBtn" class="text-xs text-slate-400 hover:text-rose-400 transition px-2.5 py-1.5 rounded-xl hover:bg-rose-500/10">
+          Reset
+        </button>
+      </div>
+    </header>
+
+    <!-- Banner Peringatan API Key -->
+    <div id="noKeyBanner" class="hidden bg-amber-500/15 border-b border-amber-500/30 px-4 py-2 flex items-center justify-between gap-3">
+      <p class="text-xs text-amber-200">
+        ⚠️ API Key <code class="font-mono bg-black/30 px-1.5 py-0.5 rounded text-amber-300">sk-mavy-...</code> belum diisi. Masukkan dulu agar bisa chat dengan <strong>claude-sonnet-5-5</strong>.
+      </p>
+      <button id="bannerOpenSettingsBtn" class="shrink-0 px-3 py-1 rounded-lg bg-amber-400 text-slate-950 font-bold text-xs hover:bg-amber-300 transition">
+        Pasang Key
+      </button>
+    </div>
+
+    <!-- Chat Messages Container -->
+    <div id="messagesContainer" class="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 scroll-smooth">
+      <!-- Empty State / Welcome Screen -->
+      <div id="welcomeScreen" class="max-w-2xl mx-auto mt-6 sm:mt-10 text-center space-y-6">
+        <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-indigo-500/15 border border-indigo-500/30 text-indigo-300 text-xs font-mono font-medium">
+          ⚡ Claude Artifacts Auto-ZIP + Terminal View
+        </div>
+        <h2 class="text-2xl md:text-3xl font-extrabold text-white tracking-tight">
+          Bangun Proyek Coding & Unduh Langsung Jadi File <span class="text-emerald-400">.ZIP</span>
+        </h2>
+        <p class="text-sm text-slate-400 max-w-lg mx-auto leading-relaxed">
+          Minta <strong class="text-slate-200">claude-sonnet-5-5</strong> membuatkan backend Node.js, REST API, atau web app. Semua folder & file otomatis dikemas menjadi arsip <strong class="text-emerald-300">.zip</strong> yang siap diekstrak!
+        </p>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-left pt-2">
+          <button type="button" class="starter-btn p-4 rounded-2xl glass-panel hover:border-indigo-500/50 hover:bg-white/[0.05] transition group" data-prompt="Buatkan proyek backend REST API lengkap menggunakan Node.js, Express, JWT Authentication, dan struktur folder modular (package.json, .env.example, src/server.js, src/routes/authRoutes.js, src/controllers/authController.js, src/middleware/authMiddleware.js, README.md).">
+            <div class="text-xs font-bold text-indigo-300 group-hover:text-indigo-200 flex items-center gap-1.5">
+              <span>🚀 Backend Node.js + Express + JWT</span>
+            </div>
+            <div class="text-[11px] text-slate-400 mt-1.5 leading-relaxed">
+              Lengkap dengan struktur folder <code>src/</code>, routes, controller, & <code>package.json</code> siap unduh ZIP
+            </div>
+          </button>
+
+          <button type="button" class="starter-btn p-4 rounded-2xl glass-panel hover:border-emerald-500/50 hover:bg-white/[0.05] transition group" data-prompt="Buatkan proyek Bot WhatsApp / Telegram modular menggunakan Node.js lengkap dengan folder commands/, config/, package.json, dan README.md.">
+            <div class="text-xs font-bold text-emerald-300 group-hover:text-emerald-200 flex items-center gap-1.5">
+              <span>🤖 Bot Modular Node.js</span>
+            </div>
+            <div class="text-[11px] text-slate-400 mt-1.5 leading-relaxed">
+              Struktur folder <code>commands/</code> & <code>config/</code> terisi kode utuh dalam 1 file ZIP
+            </div>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Input Box -->
+    <div class="p-3 sm:p-4 glass-panel border-t border-white/10">
+      <form id="chatForm" class="max-w-4xl mx-auto relative flex items-end gap-2 bg-slate-900/95 border border-white/15 focus-within:border-indigo-500/70 focus-within:ring-2 focus-within:ring-indigo-500/20 rounded-2xl p-2 shadow-2xl transition">
+        <textarea
+          id="promptInput"
+          rows="1"
+          placeholder="Contoh: Buatkan backend Node.js Express lengkap dengan struktur folder..."
+          class="w-full bg-transparent text-sm text-slate-100 placeholder-slate-500 px-3 py-2 resize-none focus:outline-none max-h-40 leading-relaxed"
+        ></textarea>
+        <button
+          type="submit"
+          id="sendBtn"
+          class="px-4 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white text-xs font-semibold transition flex items-center gap-1.5 shrink-0 shadow-lg shadow-indigo-600/25 active:scale-95"
+        >
+          <span>Kirim</span>
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+        </button>
+      </form>
+    </div>
+  </main>
+
+  <!-- =========================================================
+       SETTINGS MODAL (API KEY & PARAMETER)
+       ========================================================= -->
+  <div id="settingsModal" class="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div class="glass-panel max-w-md w-full rounded-2xl p-6 space-y-4 border border-white/15 shadow-2xl">
+      <div class="flex items-center justify-between">
+        <div>
+          <h3 class="font-bold text-white text-base">Pengaturan API Mavy</h3>
+          <p class="text-[11px] text-slate-400">Disimpan aman di browser (localStorage)</p>
+        </div>
+        <button id="closeSettingsBtn" class="text-slate-400 hover:text-white text-xl px-2">&times;</button>
+      </div>
+
+      <div class="space-y-3.5 text-xs">
+        <div>
+          <label class="block text-slate-300 font-semibold mb-1.5">API Key (sk-mavy-...)</label>
+          <div class="relative">
+            <input type="password" id="apiKeyInput" placeholder="sk-mavy-a..." class="w-full bg-slate-950 border border-white/15 rounded-xl pl-3 pr-16 py-2.5 font-mono text-cyan-300 focus:outline-none focus:border-indigo-500" />
+            <button type="button" id="toggleKeyVisBtn" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-[11px] text-slate-400 hover:text-white px-2 py-1 rounded bg-white/5">
+              Lihat
+            </button>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-slate-300 font-semibold mb-1.5">Endpoint URL</label>
+          <input type="text" id="baseUrlInput" value="https://bansos.mavy.me/v1/chat/completions" class="w-full bg-slate-950 border border-white/15 rounded-xl px-3 py-2.5 font-mono text-slate-300 focus:outline-none focus:border-indigo-500" />
+        </div>
+
+        <div>
+          <div class="flex justify-between mb-1">
+            <label class="text-slate-300 font-semibold">Temperature</label>
+            <span id="tempVal" class="font-mono text-indigo-300">0.5</span>
+          </div>
+          <input type="range" id="tempInput" min="0" max="1" step="0.1" value="0.5" class="w-full accent-indigo-500 cursor-pointer" />
+        </div>
+      </div>
+
+      <div class="flex justify-end gap-2 pt-2">
+        <button id="cancelSettingsBtn" class="px-4 py-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 text-xs font-medium transition">
+          Batal
+        </button>
+        <button id="saveSettingsBtn" class="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition shadow-lg shadow-indigo-600/25">
+          Simpan
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toastContainer" class="fixed bottom-20 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <script>
+    // =========================================================
+    // STATE & KONFIGURASI UTAMA
+    // =========================================================
+    const DEFAULT_ENDPOINT = 'https://bansos.mavy.me/v1/chat/completions';
+
+    const state = {
+      apiKey: localStorage.getItem('mavy_api_key') || '',
+      endpoint: localStorage.getItem('mavy_endpoint') || DEFAULT_ENDPOINT,
+      temperature: parseFloat(localStorage.getItem('mavy_temp') || '0.5'),
+      sessions: JSON.parse(localStorage.getItem('mavy_sessions') || '[]'),
+      currentSessionId: null,
+      isGenerating: false
+    };
+
+    // Penyimpanan kode asli di memori berdasarkan ID unik (mengatasi bug salin kode!)
+    const codeStore = new Map();
+    let codeSeq = 0;
+
+    // Penyimpanan daftar file hasil ekstraksi untuk tombol Download ZIP
+    const zipBundleStore = new Map();
+    let zipSeq = 0;
+
+    // System Prompt khusus agar AI selalu menghasilkan struktur folder + file utuh
+    const ZIP_ARTIFACT_SYSTEM_PROMPT = `Kamu adalah Senior Fullstack & Backend Software Architect (Claude Artifacts Mode).
+ATURAN WAJIB SAAT MEMBUAT PROYEK ATAU BACKEND:
+1. Setiap blok kode WAJIB didahului dengan baris penanda path file yang jelas menggunakan format:
+   **File: \`folder/namafile.ext\`**
+   Contoh:
+   **File: \`package.json\`**
+   \`\`\`json
+   { ... }
+   \`\`\`
+   **File: \`src/server.js\`**
+   \`\`\`javascript
+   ...
+   \`\`\`
+2. Tulis seluruh isi kode setiap file secara LENGKAP dari awal hingga akhir tanpa disingkat (dilarang menulis "// ... sisa kode").
+3. Sertakan semua file pendukung proyek seperti \`package.json\`, \`.env.example\`, dan \`README.md\` agar saat pengguna mengunduh paket ZIP, semua folder dan file langsung terisi kode yang siap dijalankan.`;
+
+    // =========================================================
+    // DOM ELEMENTS
+    // =========================================================
+    const sidebar = document.getElementById('sidebar');
+    const sidebarOverlay = document.getElementById('sidebarOverlay');
+    const messagesContainer = document.getElementById('messagesContainer');
+    const welcomeScreen = document.getElementById('welcomeScreen');
+    const chatForm = document.getElementById('chatForm');
+    const promptInput = document.getElementById('promptInput');
+    const sendBtn = document.getElementById('sendBtn');
+    const modelSelect = document.getElementById('modelSelect');
+    const zipProjectMode = document.getElementById('zipProjectMode');
+    const chatHistoryList = document.getElementById('chatHistoryList');
+    const sessionCount = document.getElementById('sessionCount');
+    const settingsModal = document.getElementById('settingsModal');
+    const apiKeyInput = document.getElementById('apiKeyInput');
+    const baseUrlInput = document.getElementById('baseUrlInput');
+    const tempInput = document.getElementById('tempInput');
+    const tempVal = document.getElementById('tempVal');
+    const keyStatusBadge = document.getElementById('keyStatusBadge');
+    const headerKeyDot = document.getElementById('headerKeyDot');
+    const noKeyBanner = document.getElementById('noKeyBanner');
+
+    // =========================================================
+    // FUNGSI CLIPBOARD YANG TANGGUH (MEMORI + EXEC_COMMAND FALLBACK)
+    // =========================================================
+    function copyTextToClipboard(text) {
+      // Gunakan textarea tersembunyi + document.execCommand('copy') agar selalu tembus di iframe/sandbox
+      const textarea = document.createElement('textarea');
+      textarea.value = text;
+      textarea.setAttribute('readonly', '');
+      textarea.style.position = 'fixed';
+      textarea.style.top = '-9999px';
+      textarea.style.left = '-9999px';
+      document.body.appendChild(textarea);
+      textarea.focus();
+      textarea.select();
+      textarea.setSelectionRange(0, textarea.value.length);
+
+      let copied = false;
+      try {
+        copied = document.execCommand('copy');
+      } catch (err) {
+        copied = false;
+      }
+      document.body.removeChild(textarea);
+
+      // Coba navigator.clipboard juga jika tersedia
+      if (!copied && navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).catch(() => {});
+        copied = true;
+      }
+      return copied;
+    }
+
+    // Handler global tombol "Salin Kode" pada header terminal
+    window.handleCopyTerminalCode = function(codeId, btnEl) {
+      let rawCode = codeStore.get(codeId);
+
+      // Fallback ambil langsung dari elemen <code> di dalam terminal yang sama jika perlu
+      if (rawCode === undefined && btnEl) {
+        const termWindow = btnEl.closest('.terminal-window');
+        const codeNode = termWindow ? termWindow.querySelector('code') : null;
+        rawCode = codeNode ? codeNode.textContent : '';
+      }
+
+      if (!rawCode) {
+        showToast('Tidak ada kode untuk disalin', 'error');
+        return;
+      }
+
+      const ok = copyTextToClipboard(rawCode);
+      if (ok) {
+        const originalHtml = btnEl.innerHTML;
+        btnEl.classList.add('copied');
+        btnEl.innerHTML = `
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+          <span>Tersalin! ✓</span>
+        `;
+        showToast('Kode berhasil disalin ke clipboard!', 'success');
+
+        setTimeout(() => {
+          btnEl.classList.remove('copied');
+          btnEl.innerHTML = originalHtml;
+        }, 2000);
+      } else {
+        showToast('Gagal menyalin kode ke clipboard', 'error');
+      }
+    };
+
+    // Handler global tombol "Download .ZIP"
+    window.handleDownloadBundleZip = async function(bundleId, btnEl) {
+      const bundle = zipBundleStore.get(bundleId);
+      if (!bundle || !bundle.files.length) {
+        showToast('File proyek tidak ditemukan', 'error');
+        return;
+      }
+
+      const origHtml = btnEl.innerHTML;
+      btnEl.disabled = true;
+      btnEl.innerHTML = `<span>Mengemas ZIP...</span>`;
+
+      try {
+        const zip = new JSZip();
+        bundle.files.forEach(file => {
+          zip.file(file.path, file.content);
+        });
+
+        const blob = await zip.generateAsync({ type: 'blob' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${bundle.projectName}.zip`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        showToast(`Berhasil mengunduh ${bundle.projectName}.zip (${bundle.files.length} file)!`, 'success');
+      } catch (err) {
+        console.error('ZIP Error:', err);
+        showToast('Gagal membuat arsip ZIP', 'error');
+      } finally {
+        btnEl.disabled = false;
+        btnEl.innerHTML = origHtml;
+      }
+    };
+
+    // =========================================================
+    // EKSTRAKSI STRUKTUR FOLDER & FILE DARI MARKDOWN AI
+    // =========================================================
+    function extractProjectFiles(markdownText) {
+      const files = [];
+      const lines = markdownText.split('\n');
+      let pendingFilename = null;
+      let inCodeBlock = false;
+      let codeLang = '';
+      let codeBuffer = [];
+      let autoIndex = 1;
+
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+
+        if (!inCodeBlock) {
+          // Deteksi path file sebelum blok kode:
+          // Contoh: **File: `src/server.js`**, ### `package.json`, `routes/api.js`:
+          const backtickPathMatch = line.match(/`([a-zA-Z0-9_.\-/]+\.[a-zA-Z0-9]+)`/);
+          const plainFileMatch = line.match(/^(?:#+\s*)?(?:\*\*)?(?:File|Path|Nama File)\s*:\s*([a-zA-Z0-9_.\-/]+\.[a-zA-Z0-9]+)(?:\*\*)?/i);
+
+          if (backtickPathMatch) {
+            pendingFilename = backtickPathMatch[1].replace(/^\/+/, '');
+          } else if (plainFileMatch) {
+            pendingFilename = plainFileMatch[1].replace(/^\/+/, '');
+          }
+
+          const fenceMatch = line.match(/^```([a-zA-Z0-9_-]*)/);
+          if (fenceMatch) {
+            inCodeBlock = true;
+            codeLang = fenceMatch[1] || 'txt';
+            codeBuffer = [];
+          }
+        } else {
+          if (line.trim().startsWith('```')) {
+            inCodeBlock = false;
+            const rawContent = codeBuffer.join('\n');
+
+            // Jika belum ketemu nama file di atas, cek komentar baris pertama di dalam kode (misal: // src/app.js)
+            if (!pendingFilename && codeBuffer.length > 0) {
+              const firstLineComment = codeBuffer[0].match(/^(?:\/\/|#|<!--)\s*(?:file:\s*)?([a-zA-Z0-9_.\-/]+\.[a-zA-Z0-9]+)/i);
+              if (firstLineComment) {
+                pendingFilename = firstLineComment[1].replace(/^\/+/, '');
+              }
+            }
+
+            // Abaikan perintah bash instalasi singkat (seperti `npm install`) agar tidak mengotori isi ZIP proyek jika sudah ada file kode
+            const isShellCommandOnly = ['bash', 'sh', 'zsh', 'shell', 'console'].includes(codeLang.toLowerCase()) && !pendingFilename;
+
+            if (!isShellCommandOnly) {
+              const extMap = {
+                javascript: 'js', js: 'js', jsx: 'jsx',
+                typescript: 'ts', ts: 'ts', tsx: 'tsx',
+                python: 'py', py: 'py',
+                json: 'json', html: 'html', css: 'css',
+                sql: 'sql', yaml: 'yml', yml: 'yml',
+                markdown: 'md', md: 'md', env: 'env'
+              };
+              const ext = extMap[codeLang.toLowerCase()] || codeLang.toLowerCase() || 'txt';
+              const baseName = pendingFilename || `file_${autoIndex++}.${ext}`;
+
+              // Pastikan nama file unik jika ada duplikat
+              let uniquePath = baseName;
+              let counter = 2;
+              while (files.some(f => f.path === uniquePath)) {
+                const dotIdx = baseName.lastIndexOf('.');
+                if (dotIdx !== -1) {
+                  uniquePath = `${baseName.slice(0, dotIdx)}_${counter++}${baseName.slice(dotIdx)}`;
+                } else {
+                  uniquePath = `${baseName}_${counter++}`;
+                }
+              }
+
+              files.push({
+                path: uniquePath,
+                content: rawContent
+              });
+            }
+
+            pendingFilename = null;
+          } else {
+            codeBuffer.push(line);
+          }
+        }
+      }
+
+      return files;
+    }
+
+    // =========================================================
+    // RENDERER MARKDOWN DENGAN JENDELA TERMINAL MACOS/LINUX
+    // =========================================================
+    function renderMarkdownWithTerminal(rawText, isStreaming = false) {
+      let textToParse = rawText;
+
+      // Jika sedang streaming dan blok ``` belum tertutup, tutup sementara agar langsung tampil sebagai terminal
+      if (isStreaming) {
+        const fences = textToParse.match(/```/g);
+        if (fences && fences.length % 2 !== 0) {
+          textToParse += '\n```';
+        }
+      }
+
+      const renderer = new marked.Renderer();
+
+      renderer.code = function(codeOrToken, infostring) {
+        const rawCode = typeof codeOrToken === 'string' ? codeOrToken : (codeOrToken.text || '');
+        const rawLang = typeof codeOrToken === 'string' ? (infostring || '') : (codeOrToken.lang || '');
+        const cleanLang = (rawLang.trim().split(/\s+/)[0] || 'terminal').toLowerCase();
+
+        // Simpan kode mentah ke Map memori dengan ID unik
+        const codeId = `term_code_${++codeSeq}`;
+        codeStore.set(codeId, rawCode);
+
+        // Syntax Highlighting
+        let highlighted = escapeHtml(rawCode);
+        if (window.hljs) {
+          if (cleanLang && hljs.getLanguage(cleanLang)) {
+            try {
+              highlighted = hljs.highlight(rawCode, { language: cleanLang }).value;
+            } catch {}
+          } else {
+            try {
+              highlighted = hljs.highlightAuto(rawCode).value;
+            } catch {}
+          }
+        }
+
+        // Nomor baris di sebelah kiri terminal
+        const lines = rawCode.replace(/\n$/, '').split('\n');
+        const lineNumsHtml = lines.map((_, idx) => idx + 1).join('<br>');
+
+        return `
+          <div class="terminal-window">
+            <div class="terminal-header">
+              <div class="flex items-center gap-3 min-w-0">
+                <div class="terminal-dots" aria-hidden="true">
+                  <span class="terminal-dot dot-red"></span>
+                  <span class="terminal-dot dot-yellow"></span>
+                  <span class="terminal-dot dot-green"></span>
+                </div>
+                <span class="text-[11px] font-mono font-semibold text-indigo-300 bg-indigo-500/15 px-2.5 py-0.5 rounded-md border border-indigo-500/30 truncate">
+                  bash — ${escapeHtml(cleanLang)}
+                </span>
+              </div>
+              <button
+                type="button"
+                onclick="handleCopyTerminalCode('${codeId}', this)"
+                class="terminal-copy-btn"
+                title="Salin seluruh kode di terminal ini"
+              >
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect width="14" height="14" x="8" y="8" rx="2" ry="2" stroke-width="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" stroke-width="2"/></svg>
+                <span>Salin Kode</span>
+              </button>
+            </div>
+            <div class="terminal-body">
+              <div class="line-numbers" aria-hidden="true">${lineNumsHtml}</div>
+              <pre class="code-content"><code class="hljs">${highlighted}</code></pre>
+            </div>
+          </div>
+        `;
+      };
+
+      return marked.parse(textToParse, { renderer, breaks: true, gfm: true });
+    }
+
+    // =========================================================
+    // RENDER ARTIFACT ZIP CARD (PREVIEW STRUKTUR FOLDER & TOMBOL UNDUH)
+    // =========================================================
+    function buildArtifactZipCardHtml(files, sessionTitle) {
+      if (!files || files.length === 0) return '';
+
+      const bundleId = `zip_bundle_${++zipSeq}`;
+      const slugName = (sessionTitle || 'claude-project')
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '')
+        .slice(0, 32) || 'claude-project';
+
+      zipBundleStore.set(bundleId, {
+        projectName: slugName,
+        files
+      });
+
+      const fileTreeHtml = files.map(f => {
+        const isNested = f.path.includes('/');
+        return `
+          <div class="flex items-center justify-between py-1 px-2.5 rounded-lg bg-black/30 border border-white/5 text-[11px] font-mono">
+            <span class="text-emerald-300 truncate">${isNested ? '📁 ' : '📄 '}${escapeHtml(f.path)}</span>
+            <span class="text-slate-500 shrink-0 ml-2">${f.content.split('\n').length} baris</span>
+          </div>
+        `;
+      }).join('');
+
+      return `
+        <div class="artifact-zip-card">
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-300 shrink-0">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/></svg>
+              </div>
+              <div>
+                <div class="flex items-center gap-2">
+                  <span class="text-xs sm:text-sm font-bold text-white">Project Siap Unduh (.ZIP)</span>
+                  <span class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                    ${files.length} File
+                  </span>
+                </div>
+                <p class="text-[11px] text-slate-400 mt-0.5">
+                  Struktur folder & isi kode otomatis terkemas dalam <code class="text-emerald-300">${escapeHtml(slugName)}.zip</code>
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onclick="handleDownloadBundleZip('${bundleId}', this)"
+              class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold transition shadow-lg shadow-emerald-600/25 active:scale-95 cursor-pointer"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+              <span>Download .ZIP</span>
+            </button>
+          </div>
+
+          <!-- Daftar Struktur File di Dalam ZIP -->
+          <div class="mt-3 pt-3 border-t border-white/10 grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-40 overflow-y-auto">
+            ${fileTreeHtml}
+          </div>
+        </div>
+      `;
+    }
+
+    // =========================================================
+    // MANAJEMEN SESI & RENDER UI CHAT
+    // =========================================================
+    function init() {
+      apiKeyInput.value = state.apiKey;
+      baseUrlInput.value = state.endpoint;
+      tempInput.value = state.temperature;
+      tempVal.textContent = state.temperature;
+
+      updateKeyStatusUI();
+
+      if (state.sessions.length > 0) {
+        loadSession(state.sessions[0].id);
+      } else {
+        createNewSession(false);
+      }
+      renderSidebar();
+
+      if (!state.apiKey) {
+        setTimeout(() => openSettingsModal(), 400);
+      }
+    }
+
+    function updateKeyStatusUI() {
+      const hasKey = Boolean(state.apiKey && state.apiKey.trim().length > 5);
+      if (hasKey) {
+        keyStatusBadge.textContent = 'Aktif ✓';
+        keyStatusBadge.className = 'px-2 py-0.5 rounded-full text-[10px] font-mono bg-emerald-500/20 text-emerald-300 border border-emerald-500/30';
+        headerKeyDot.className = 'w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399]';
+        noKeyBanner.classList.add('hidden');
+      } else {
+        keyStatusBadge.textContent = 'Isi Key';
+        keyStatusBadge.className = 'px-2 py-0.5 rounded-full text-[10px] font-mono bg-amber-500/20 text-amber-300 border border-amber-500/30';
+        headerKeyDot.className = 'w-2 h-2 rounded-full bg-amber-400';
+        noKeyBanner.classList.remove('hidden');
+      }
+    }
+
+    function saveSessions() {
+      localStorage.setItem('mavy_sessions', JSON.stringify(state.sessions));
+      renderSidebar();
+    }
+
+    function createNewSession(render = true) {
+      if (state.isGenerating) return;
+      const id = 'chat_' + Date.now();
+      state.sessions.unshift({
+        id,
+        title: 'Proyek Baru',
+        model: modelSelect.value,
+        messages: []
+      });
+      state.currentSessionId = id;
+      saveSessions();
+      if (render) {
+        renderMessages();
+        closeMobileSidebar();
+      }
+    }
+
+    function getCurrentSession() {
+      return state.sessions.find(s => s.id === state.currentSessionId);
+    }
+
+    function loadSession(id) {
+      if (state.isGenerating) return;
+      state.currentSessionId = id;
+      const session = getCurrentSession();
+      if (session && session.model) {
+        modelSelect.value = session.model;
+      }
+      renderSidebar();
+      renderMessages();
+      closeMobileSidebar();
+    }
+
+    function renderSidebar() {
+      sessionCount.textContent = state.sessions.length;
+      chatHistoryList.innerHTML = '';
+
+      state.sessions.forEach(session => {
+        const active = session.id === state.currentSessionId;
+        const item = document.createElement('div');
+        item.className = `group flex items-center justify-between px-3 py-2.5 rounded-xl text-xs cursor-pointer transition ${
+          active
+            ? 'bg-indigo-600/25 text-white font-semibold border border-indigo-500/40'
+            : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
+        }`;
+        item.innerHTML = `
+          <span class="truncate pr-2">${escapeHtml(session.title)}</span>
+          <button type="button" class="delete-session opacity-0 group-hover:opacity-100 text-slate-500 hover:text-rose-400 px-1.5 py-0.5 rounded" title="Hapus Sesi">&times;</button>
+        `;
+        item.addEventListener('click', (e) => {
+          if (e.target.classList.contains('delete-session')) {
+            e.stopPropagation();
+            if (state.isGenerating) return;
+            state.sessions = state.sessions.filter(s => s.id !== session.id);
+            if (state.currentSessionId === session.id) {
+              state.sessions.length ? loadSession(state.sessions[0].id) : createNewSession();
+            }
+            saveSessions();
+            return;
+          }
+          loadSession(session.id);
+        });
+        chatHistoryList.appendChild(item);
+      });
+    }
+
+    function renderMessages() {
+      const session = getCurrentSession();
+      codeStore.clear();
+      zipBundleStore.clear();
+
+      if (!session || session.messages.length === 0) {
+        messagesContainer.innerHTML = '';
+        messagesContainer.appendChild(welcomeScreen);
+        welcomeScreen.classList.remove('hidden');
+        return;
+      }
+
+      welcomeScreen.classList.add('hidden');
+      messagesContainer.innerHTML = '';
+
+      session.messages.forEach(msg => {
+        appendMessageBubble(msg.role, msg.content, false, msg.model);
+      });
+      scrollToBottom();
+    }
+
+    function appendMessageBubble(role, content, isStreaming = false, modelName = '') {
+      welcomeScreen.classList.add('hidden');
+      const session = getCurrentSession();
+      const wrapper = document.createElement('div');
+      wrapper.className = `max-w-4xl mx-auto flex gap-3 sm:gap-3.5 ${role === 'user' ? 'justify-end' : 'justify-start'}`;
+
+      if (role === 'user') {
+        wrapper.innerHTML = `
+          <div class="max-w-[85%] sm:max-w-[78%] rounded-2xl rounded-tr-sm bg-gradient-to-br from-indigo-600 to-violet-600 text-white px-4 py-3 text-sm shadow-lg shadow-indigo-600/20 whitespace-pre-wrap leading-relaxed break-words">${escapeHtml(content)}</div>
+        `;
+      } else {
+        const files = !isStreaming ? extractProjectFiles(content) : [];
+        const zipCardHtml = !isStreaming ? buildArtifactZipCardHtml(files, session ? session.title : 'claude-project') : '';
+        const badgeModel = modelName || modelSelect.value;
+
+        wrapper.innerHTML = `
+          <div class="w-8 h-8 rounded-xl bg-slate-800/90 border border-indigo-500/35 flex items-center justify-center text-indigo-300 font-bold text-xs shrink-0 mt-1 shadow-md">
+            AI
+          </div>
+          <div class="flex-1 min-w-0 glass-panel rounded-2xl rounded-tl-sm px-4 sm:px-5 py-4 text-sm text-slate-200 prose-chat">
+            <div class="flex items-center justify-between gap-2 mb-2 pb-2 border-b border-white/5">
+              <span class="text-[11px] font-mono text-cyan-300 bg-cyan-500/10 px-2 py-0.5 rounded border border-cyan-500/20">
+                ${escapeHtml(badgeModel)}
+              </span>
+            </div>
+            <div class="ai-body">${renderMarkdownWithTerminal(content, isStreaming)}</div>
+            ${zipCardHtml}
+          </div>
+        `;
+      }
+
+      messagesContainer.appendChild(wrapper);
+      scrollToBottom();
+      return wrapper;
+    }
+
+    // =========================================================
+    // PENGIRIMAN PROMPT & STREAMING DARI API BANSOS.MAVY.ME
+    // =========================================================
+    async function handleSend(promptText) {
+      if (!promptText.trim() || state.isGenerating) return;
+
+      if (!state.apiKey) {
+        showToast('Masukkan API Key sk-mavy-... terlebih dahulu!', 'error');
+        openSettingsModal();
+        return;
+      }
+
+      const session = getCurrentSession();
+      if (session.messages.length === 0) {
+        session.title = promptText.slice(0, 38) + (promptText.length > 38 ? '...' : '');
+      }
+      const chosenModel = modelSelect.value;
+      session.model = chosenModel;
+      session.messages.push({ role: 'user', content: promptText });
+      saveSessions();
+
+      appendMessageBubble('user', promptText);
+      promptInput.value = '';
+      promptInput.style.height = 'auto';
+
+      state.isGenerating = true;
+      sendBtn.disabled = true;
+      sendBtn.innerHTML = '<span>Menulis...</span>';
+
+      const aiWrapper = appendMessageBubble('assistant', '▋', true, chosenModel);
+      const aiBody = aiWrapper.querySelector('.ai-body');
+
+      const apiMessages = [];
+      if (zipProjectMode.checked) {
+        apiMessages.push({ role: 'system', content: ZIP_ARTIFACT_SYSTEM_PROMPT });
+      }
+      apiMessages.push(...session.messages.map(m => ({ role: m.role, content: m.content })));
+
+      let fullReply = '';
+
+      try {
+        const response = await fetch(state.endpoint, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${state.apiKey}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            model: chosenModel,
+            messages: apiMessages,
+            temperature: state.temperature,
+            stream: true
+          })
+        });
+
+        if (!response.ok) {
+          const errText = await response.text();
+          throw new Error(`HTTP ${response.status}: ${errText}`);
+        }
+
+        const contentType = response.headers.get('content-type') || '';
+
+        if (contentType.includes('text/event-stream') && response.body) {
+          const reader = response.body.getReader();
+          const decoder = new TextDecoder('utf-8');
+          let buffer = '';
+
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || '';
+
+            for (const line of lines) {
+              const trimmed = line.trim();
+              if (!trimmed || !trimmed.startsWith('data:')) continue;
+              const dataStr = trimmed.slice(5).trim();
+              if (dataStr === '[DONE]') continue;
+
+              try {
+                const parsed = JSON.parse(dataStr);
+                const delta = parsed.choices?.[0]?.delta?.content || parsed.delta?.text || '';
+                if (delta) {
+                  fullReply += delta;
+                  aiBody.innerHTML = renderMarkdownWithTerminal(fullReply + ' ▋', true);
+                  scrollToBottom();
+                }
+              } catch {}
+            }
+          }
+        } else {
+          // Fallback non-streaming JSON response
+          const data = await response.json();
+          fullReply = data.choices?.[0]?.message?.content || data.content?.[0]?.text || 'Respons kosong dari server.';
+        }
+
+        if (!fullReply.trim()) {
+          fullReply = '*(Model mengembalikan respons kosong)*';
+        }
+
+        session.messages.push({ role: 'assistant', content: fullReply, model: chosenModel });
+        saveSessions();
+        renderMessages(); // Render ulang bersih beserta kartu Auto-ZIP jika terdeteksi file proyek
+      } catch (err) {
+        console.error('Fetch API Error:', err);
+        let errDetail = err.message;
+        if (errDetail.includes('Failed to fetch')) {
+          errDetail = 'Gagal terhubung ke https://bansos.mavy.me/v1/chat/completions. Pastikan koneksi internet aktif atau API Key valid.';
+        }
+        fullReply = `⚠️ **Gagal memproses permintaan:**\n\n\`\`\`text\n${errDetail}\n\`\`\``;
+        session.messages.push({ role: 'assistant', content: fullReply, model: chosenModel });
+        saveSessions();
+        renderMessages();
+      } finally {
+        state.isGenerating = false;
+        sendBtn.disabled = false;
+        sendBtn.innerHTML = '<span>Kirim</span><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>';
+        promptInput.focus();
+      }
+    }
+
+    // =========================================================
+    // MODAL, MOBILE SIDEBAR & HELPER UI
+    // =========================================================
+    function openSettingsModal() {
+      apiKeyInput.value = state.apiKey;
+      baseUrlInput.value = state.endpoint;
+      tempInput.value = state.temperature;
+      tempVal.textContent = state.temperature;
+      settingsModal.classList.remove('hidden');
+      settingsModal.classList.add('flex');
+    }
+
+    function closeSettingsModal() {
+      settingsModal.classList.add('hidden');
+      settingsModal.classList.remove('flex');
+    }
+
+    function openMobileSidebar() {
+      sidebar.classList.remove('-translate-x-full');
+      sidebarOverlay.classList.remove('hidden');
+    }
+
+    function closeMobileSidebar() {
+      sidebar.classList.add('-translate-x-full');
+      sidebarOverlay.classList.add('hidden');
+    }
+
+    function scrollToBottom() {
+      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+
+    function escapeHtml(str) {
+      return String(str || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    function showToast(msg, type = 'info') {
+      const container = document.getElementById('toastContainer');
+      const el = document.createElement('div');
+      let colors = 'bg-slate-900/95 text-slate-100 border-white/15';
+      if (type === 'success') colors = 'bg-emerald-950/95 text-emerald-200 border-emerald-500/45';
+      if (type === 'error') colors = 'bg-rose-950/95 text-rose-200 border-rose-500/45';
+
+      el.className = `px-4 py-2.5 rounded-xl border backdrop-blur-md shadow-2xl text-xs font-semibold transition-all duration-300 ${colors}`;
+      el.textContent = msg;
+      container.appendChild(el);
+
+      setTimeout(() => {
+        el.style.opacity = '0';
+        el.style.transform = 'translateY(8px)';
+        setTimeout(() => el.remove(), 300);
+      }, 2400);
+    }
+
+    // =========================================================
+    // EVENT LISTENERS
+    // =========================================================
+    chatForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      handleSend(promptInput.value);
+    });
+
+    promptInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        handleSend(promptInput.value);
+      }
+    });
+
+    promptInput.addEventListener('input', () => {
+      promptInput.style.height = 'auto';
+      promptInput.style.height = Math.min(promptInput.scrollHeight, 160) + 'px';
+    });
+
+    document.querySelectorAll('.starter-btn').forEach(btn => {
+      btn.addEventListener('click', () => handleSend(btn.dataset.prompt));
+    });
+
+    document.getElementById('newChatBtn').addEventListener('click', () => createNewSession(true));
+    document.getElementById('clearChatBtn').addEventListener('click', () => {
+      if (state.isGenerating) return;
+      const session = getCurrentSession();
+      if (session) {
+        session.messages = [];
+        session.title = 'Proyek Baru';
+        saveSessions();
+        renderMessages();
+        showToast('Sesi chat dibersihkan', 'info');
+      }
+    });
+
+    document.getElementById('mobileMenuBtn').addEventListener('click', openMobileSidebar);
+    sidebarOverlay.addEventListener('click', closeMobileSidebar);
+
+    document.getElementById('openSettingsBtn').addEventListener('click', openSettingsModal);
+    document.getElementById('headerKeyBtn').addEventListener('click', openSettingsModal);
+    document.getElementById('bannerOpenSettingsBtn').addEventListener('click', openSettingsModal);
+    document.getElementById('closeSettingsBtn').addEventListener('click', closeSettingsModal);
+    document.getElementById('cancelSettingsBtn').addEventListener('click', closeSettingsModal);
+
+    document.getElementById('toggleKeyVisBtn').addEventListener('click', () => {
+      const isPass = apiKeyInput.type === 'password';
+      apiKeyInput.type = isPass ? 'text' : 'password';
+      document.getElementById('toggleKeyVisBtn').textContent = isPass ? 'Sembunyi' : 'Lihat';
+    });
+
+    tempInput.addEventListener('input', () => {
+      tempVal.textContent = tempInput.value;
+    });
+
+    document.getElementById('saveSettingsBtn').addEventListener('click', () => {
+      state.apiKey = apiKeyInput.value.trim();
+      state.endpoint = baseUrlInput.value.trim() || DEFAULT_ENDPOINT;
+      state.temperature = parseFloat(tempInput.value);
+
+      localStorage.setItem('mavy_api_key', state.apiKey);
+      localStorage.setItem('mavy_endpoint', state.endpoint);
+      localStorage.setItem('mavy_temp', state.temperature);
+
+      updateKeyStatusUI();
+      closeSettingsModal();
+      showToast('Pengaturan API berhasil disimpan!', 'success');
+    });
+
+    init();
+  </script>
+</body>
+</html>
